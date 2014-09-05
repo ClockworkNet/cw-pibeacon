@@ -1,0 +1,109 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:        cw-pibeacon
+# Required-Start:  $network $remote_fs $syslog
+# Required-Stop:   $network $remote_fs $syslog
+# Default-Start:   2 3 4 5
+# Default-Stop:    0 1 6
+# Short-Description: CW PiBeacon
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+. /lib/lsb/init-functions
+
+if [ -r /etc/default/cw-pibeacon ]; then
+	. /etc/default/cw-pibeacon
+fi
+
+HCICONFIG=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hciconfig
+HCITOOL=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hcitool
+
+case $1 in
+	start)
+		log_daemon_msg "Starting CW PiBeacon" "cw-pibeacon"
+		$HCICONFIG $CW_PIBEACON_HCI_DEVICE reset
+		
+		# Do not scan BLE
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x03 0x001A 00
+
+		# Set a random device address based on beacon minor
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x0005 28 8C $CW_PIBEACON_MINOR EB FF
+
+		# Configure advertising:
+		# 0x08               LE OGF
+		# 0x0006             LE Set Advertising Parameters
+		# A0 00              min frequency: 100ms
+		# 40 06              max frequency: 1000ms
+		# 03                 advertising type: not connectable, undirected (0x03)
+		# 01                 own address type: random (0x01)
+		# 00                 direct address type: (ignored)
+		# 00 00 00 00 00 00  direct address: (ignored)
+		# 07                 advertising channel map: 000000111b = 0x07, channels 37-39
+		# 03                 advertising filter policy: scan & connect from whitelist only
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x0006 A0 00 40 06 03 01 00 00 00 00 00 00 00 07 03
+
+		# Set advertising manufacturer data:
+		# From SO answer: http://stackoverflow.com/a/22148306
+		# 0x08   - OGF code for LE controller commands
+		# 0x0008 - Command to set advertising data
+		# 1E Number of bytes that follow in the advertisement
+		# 02 Number of bytes that follow in first AD structure
+		# 01 Flags AD type
+		# 06 Flags value 0x06 = 000000110
+		#    bit 0 (OFF) LE Limited Discoverable Mode
+		#    bit 1 (ON)  LE General Discoverable Mode
+		#    bit 2 (ON)  BR/EDR Not Supported
+		#    bit 3 (OFF) Simultaneous LE and BR/EDR to Same Device Capable (controller)
+		#    bit 4 (OFF) Simultaneous LE and BR/EDR to Same Device Capable (Host)
+		# 1A Number of bytes that follow in second (and last) AD structure
+		# FF Manufacturer specific data AD type
+		# 4C Company identifier code LSB
+		# 00 Company identifier code MSB (0x004C == Apple)
+		# 02 Byte 0 of iBeacon advertisement indicator
+		# 15 Byte 1 of iBeacon advertisement indicator
+		# --- my own follows ---
+		# [UUID]
+		# XX XX - beacon major
+		# XX XX - beacon minor
+		# XX    - beacon power
+		# 00    - ?? (removed)
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x0008 1E 02 01 06 1A FF 4C 00 02 15 $CW_PIBEACON_UUID $CW_PIBEACON_MAJOR $CW_PIBEACON_MINOR $CW_PIBEACON_POWER 00
+
+		# Start advertising
+		# 0x08    LE OGF
+		# 0x000A  LE Set Advertise command
+		# 01      Enable advertising (0x01)
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x000A 01
+
+		status=$?
+		log_end_msg $status
+  		;;
+	stop)
+		log_daemon_msg "Stopping CW PiBeacon"
+		$HCICONFIG $CW_PIBEACON_HCI_DEVICE down
+		status=$?
+		log_end_msg $?
+  		;;
+	restart|force-reload)
+		$0 stop && sleep 2 && $0 start
+  		;;
+	try-restart)
+		if $0 status >/dev/null; then
+			$0 restart
+		else
+			exit 0
+		fi
+		;;
+	reload)
+		exit 3
+		;;
+	status)
+		exit 0
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|try-restart|force-reload|status}"
+		exit 2
+		;;
+esac
