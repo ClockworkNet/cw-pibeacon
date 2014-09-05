@@ -35,7 +35,7 @@ case $1 in
 		# 0x08               LE OGF
 		# 0x0006             LE Set Advertising Parameters
 		# A0 00              min frequency: 100ms
-		# A0 00              max frequency: 100ms
+		# 40 06              max frequency: 1000ms (needed as some dongles die at 100ms only)
 		# 03                 advertising type: not connectable, undirected (0x03)
 		# 01                 own address type: random (0x01)
 		# 00                 direct address type: (ignored)
