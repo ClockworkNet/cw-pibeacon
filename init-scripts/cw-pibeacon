@@ -11,14 +11,14 @@
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
-HCICONFIG=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hciconfig
-HCITOOL=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hcitool
-
 . /lib/lsb/init-functions
 
 if [ -r /etc/default/cw-pibeacon ]; then
 	. /etc/default/cw-pibeacon
 fi
+
+HCICONFIG=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hciconfig
+HCITOOL=$CW_PIBEACON_BLUEZ_TOOLS_PATH/hcitool
 
 case $1 in
 	start)
