@@ -35,14 +35,14 @@ case $1 in
 		# 0x08               LE OGF
 		# 0x0006             LE Set Advertising Parameters
 		# A0 00              min frequency: 100ms
-		# 40 06              max frequency: 1000ms (needed as some dongles die at 100ms only)
+		# 40 06              max frequency: 1000ms
 		# 03                 advertising type: not connectable, undirected (0x03)
 		# 01                 own address type: random (0x01)
 		# 00                 direct address type: (ignored)
 		# 00 00 00 00 00 00  direct address: (ignored)
 		# 07                 advertising channel map: 000000111b = 0x07, channels 37-39
-		# 00                 advertising filter policy: connect from any (0x00)
-		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x0006 A0 00 A0 03 00 01 00 00 00 00 00 00 00 07 00
+		# 03                 advertising filter policy: scan & connect from whitelist only
+		$HCITOOL -i $CW_PIBEACON_HCI_DEVICE cmd 0x08 0x0006 A0 00 40 06 03 01 00 00 00 00 00 00 00 07 03
 
 		# Set advertising manufacturer data:
 		# From SO answer: http://stackoverflow.com/a/22148306
